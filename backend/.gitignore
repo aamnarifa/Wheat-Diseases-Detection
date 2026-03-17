@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.pyc
+
+# Virtual environment
+venv/
+
+# Environment variables
+.env
+
+# Models (optional but recommended)
+*.keras
+saved_models/
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+.vscode/

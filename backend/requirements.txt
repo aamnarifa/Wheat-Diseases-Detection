@@ -1,0 +1,10 @@
+tensorflow==2.16.1
+fastapi==0.110.0
+uvicorn==0.29.0
+numpy==1.26.4
+pillow==10.2.0
+scipy==1.13.0
+matplotlib==3.8.4
+python-dotenv
+requests
+google-generativeai
