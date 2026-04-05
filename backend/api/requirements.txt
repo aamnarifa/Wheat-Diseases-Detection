@@ -56,3 +56,5 @@ urllib3==2.6.3
 uvicorn==0.29.0
 Werkzeug==3.1.6
 wrapt==2.1.1
+tensorflow-cpu==2.13.0
+keras==2.13.1
