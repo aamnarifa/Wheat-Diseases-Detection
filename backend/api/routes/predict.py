@@ -1,0 +1,74 @@
+from fastapi import APIRouter, File, UploadFile
+import numpy as np
+from io import BytesIO
+from PIL import Image
+import tensorflow as tf
+import os
+from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
+
+from ..shared import latest_prediction
+from .insurance import get_insurance_recommendation, SEVERITY_MAP
+
+router = APIRouter()
+
+CURRENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+BACKEND_DIR = os.path.dirname(CURRENT_DIR)
+MODEL_PATH = os.path.join(BACKEND_DIR, "saved_models", "wheat_disease_model.keras")
+
+MODEL = tf.keras.models.load_model(MODEL_PATH)
+
+CLASS_NAMES = [
+    "BlackPoint",
+    "FusariumFootRot",
+    "HealthyLeaf",
+    "LeafBlight",
+    "WheatBlast"
+]
+
+def read_file_as_image(data):
+    image = Image.open(BytesIO(data)).convert("RGB")
+    image = image.resize((224, 224))
+    image = np.array(image).astype(np.float32)
+    image = preprocess_input(image)
+    return image
+
+@router.post("")
+async def predict(file: UploadFile = File(...)):
+    try:
+        image = read_file_as_image(await file.read())
+        img_batch = np.expand_dims(image, 0)
+
+        predictions = MODEL.predict(img_batch, verbose=0)[0]
+        predicted_class = CLASS_NAMES[np.argmax(predictions)]
+        confidence = float(np.max(predictions)) * 100
+
+        if confidence < 70:
+            return {
+                "success": False,
+                "status": "rejected",
+                "message": f"Low confidence ({round(confidence,1)}%). Upload clearer wheat leaf image.",
+                "confidence": round(confidence, 2)
+            }
+
+        insurance_data = get_insurance_recommendation(predicted_class)
+
+        latest_prediction["disease"] = predicted_class
+        latest_prediction["confidence"] = round(confidence, 1)
+        latest_prediction["severity"] = SEVERITY_MAP.get(predicted_class, "Unknown")
+
+        return {
+            "success": True,
+            "status": "success",
+            "class": predicted_class,
+            "confidence": round(confidence, 2),
+            "severity": SEVERITY_MAP.get(predicted_class, "Unknown"),
+            "insurance": insurance_data,
+            "bbox": {
+                "x": 0.2,
+                "y": 0.2,
+                "width": 0.6,
+                "height": 0.6
+            }
+        }
+    except Exception as e:
+        return {"success": False, "message": str(e)}

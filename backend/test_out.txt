@@ -1,0 +1,7 @@
+Exception caught!
+Traceback (most recent call last):
+  File "C:\Users\Aamina Rifa\Desktop\wheat_disease\backend\test_api.py", line 8, in <module>
+    client = TestClient(app)
+  File "C:\Users\Aamina Rifa\Desktop\wheat_disease\backend\venv\lib\site-packages\starlette\testclient.py", line 429, in __init__
+    super().__init__(
+TypeError: Client.__init__() got an unexpected keyword argument 'app'

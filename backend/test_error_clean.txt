@@ -1,0 +1,59 @@
+﻿python : Traceback 
+(most recent call 
+last):
+At line:1 char:26
++ ... s\activate; 
+python -c "from 
+api.main import app" > 
+test_error.txt 2>& ...
++                 ~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~
+    + CategoryInfo     
+         : NotSpecifi  
+  ed: (Traceback (mo   
+ st recent call las    
+t)::String) [], Re    
+moteException
+    + FullyQualifiedEr 
+   rorId : NativeComm  
+  andError
+ 
+  File 
+"C:\Users\Aamina Rifa\D
+esktop\wheat_disease\ba
+ckend\api\main.py", 
+line 9, in <module>
+    from .auth import 
+router as auth_router
+ImportError: cannot 
+import name 'router' 
+from 'api.auth' 
+(C:\Users\Aamina Rifa\D
+esktop\wheat_disease\ba
+ckend\api\auth.py)
+
+During handling of the 
+above exception, 
+another exception 
+occurred:
+
+Traceback (most recent 
+call last):
+  File "<string>", 
+line 1, in <module>
+  File 
+"C:\Users\Aamina Rifa\D
+esktop\wheat_disease\ba
+ckend\api\main.py", 
+line 15, in <module>
+    from api.auth 
+import router as 
+auth_router
+ImportError: cannot 
+import name 'router' 
+from 'api.auth' 
+(C:\Users\Aamina Rifa\D
+esktop\wheat_disease\ba
+ckend\api\auth.py)
