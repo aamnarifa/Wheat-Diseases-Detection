@@ -1,0 +1,6 @@
+Traceback (most recent call last):
+  File "C:\Users\Aamina Rifa\Desktop\wheat_disease\backend\test_import_all.py", line 5, in <module>
+    from api.routes.chat import router as chat_router
+  File "C:\Users\Aamina Rifa\Desktop\wheat_disease\backend\api\routes\chat.py", line 5, in <module>
+    from google import genai
+ImportError: cannot import name 'genai' from 'google' (unknown location)

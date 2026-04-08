@@ -5,6 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { predictWheatDisease, PredictionResult } from '../utils/api';
+import * as Location from 'expo-location';
 
 const UploadCard = () => {
     const router = useRouter();
@@ -12,15 +13,33 @@ const UploadCard = () => {
     const [result, setResult] = React.useState<PredictionResult | null>(null);
     const [image, setImage] = React.useState<string | null>(null);
     const [showModal, setShowModal] = React.useState(false);
+    const [showOptionsModal, setShowOptionsModal] = React.useState(false);
 
-    const handleAnalysis = async (uri: string) => {
-        console.log("Starting analysis for URI:", uri);
-        setImage(uri);
+    const handleAnalysis = async () => {
+        if (!image) {
+            Alert.alert("No Image", "Please capture or select an image first.");
+            return;
+        }
+
+        console.log("Starting analysis for URI:", image);
         setLoading(true);
         setResult(null);
 
         try {
-            const prediction = await predictWheatDisease(uri);
+            let lat: number | undefined;
+            let lng: number | undefined;
+            try {
+                const { status } = await Location.requestForegroundPermissionsAsync();
+                if (status === 'granted') {
+                    const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+                    lat = loc.coords.latitude;
+                    lng = loc.coords.longitude;
+                }
+            } catch (e) {
+                console.log('Location error during analysis', e);
+            }
+
+            const prediction = await predictWheatDisease(image, lat, lng);
             console.log("Analysis complete:", prediction);
             setResult(prediction);
             setShowModal(true);
@@ -30,6 +49,10 @@ const UploadCard = () => {
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleSelectImage = () => {
+        setShowOptionsModal(true);
     };
 
     const pickImage = async () => {
@@ -47,7 +70,8 @@ const UploadCard = () => {
             });
 
             if (!result.canceled) {
-                handleAnalysis(result.assets[0].uri);
+                setImage(result.assets[0].uri);
+                setResult(null);
             }
         } catch (error) {
             console.error("Error picking image:", error);
@@ -79,26 +103,10 @@ const UploadCard = () => {
                 const capturedUri = result.assets[0].uri;
                 console.log("Photo captured local URI:", capturedUri);
                 setImage(capturedUri);
-
-                setLoading(true);
                 setResult(null);
-
-                try {
-                    console.log("Starting prediction...");
-                    const prediction = await predictWheatDisease(capturedUri);
-                    console.log("Prediction complete:", prediction);
-                    setResult(prediction);
-                    setShowModal(true);
-                } catch (apiError) {
-                    console.error("Prediction catch block error:", apiError);
-                    Alert.alert("Prediction Failed", "Could not connect to the analysis server.");
-                } finally {
-                    setLoading(false);
-                }
             }
         } catch (error) {
             console.error("Error taking photo:", error);
-            setLoading(false);
             Alert.alert("Error", "Could not open camera. Please try again.");
         }
     };
@@ -112,32 +120,13 @@ const UploadCard = () => {
                 resizeMode="contain"
             />
 
-            {/* Camera Icon Container */}
-            <TouchableOpacity
-                activeOpacity={0.7}
-                onPress={pickImage}
-                style={styles.iconContainer}
+            {/* Combined Upload Area */}
+            <TouchableOpacity 
+                activeOpacity={0.7} 
+                onPress={handleSelectImage}
+                style={{ alignItems: 'center', width: '100%', marginBottom: image && !result ? 20 : 30 }}
             >
-                <Image
-                    source={require('../assets/images/camera.png')}
-                    style={styles.cameraIcon}
-                    resizeMode="contain"
-                />
-                <View className="absolute -top-1 -right-1 bg-green-600 rounded-full p-1.5 border-2 border-white shadow-sm">
-                    <Ionicons name="add" size={16} color="white" />
-                </View>
-            </TouchableOpacity>
-
-            <Text className="text-2xl font-bold text-gray-800 mb-1">Upload a photo</Text>
-            <Text className="text-gray-500 text-lg mb-8 italic">of wheat leaf</Text>
-
-            <TouchableOpacity
-                activeOpacity={0.8}
-                className="w-full"
-                onPress={takePhoto}
-                disabled={loading}
-            >
-                {image && !loading && !result ? (
+                {image && !result ? (
                     <View style={styles.viewfinderContainer}>
                         <Image
                             source={{ uri: image }}
@@ -150,10 +139,32 @@ const UploadCard = () => {
                         <View style={[styles.corner, styles.bottomLeft]} />
                         <View style={[styles.corner, styles.bottomRight]} />
                     </View>
-                ) : null}
+                ) : (
+                    <>
+                        <View style={styles.iconContainer}>
+                            <Image
+                                source={require('../assets/images/camera.png')}
+                                style={styles.cameraIcon}
+                                resizeMode="contain"
+                            />
+                            <View className="absolute -top-1 -right-1 bg-green-600 rounded-full p-1.5 border-2 border-white shadow-sm">
+                                <Ionicons name="add" size={16} color="white" />
+                            </View>
+                        </View>
+                        <Text className="text-2xl font-bold text-gray-800 mb-1">Upload a photo</Text>
+                        <Text className="text-gray-500 text-lg italic">of wheat leaf</Text>
+                    </>
+                )}
+            </TouchableOpacity>
 
+            <TouchableOpacity
+                activeOpacity={0.8}
+                className="w-full"
+                onPress={handleAnalysis}
+                disabled={loading || !image}
+            >
                 <LinearGradient
-                    colors={loading ? ['#9CA3AF', '#6B7280'] : ['#4CAF50', '#2D7D46']}
+                    colors={loading || !image ? ['#9CA3AF', '#6B7280'] : ['#4CAF50', '#2D7D46']}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                     style={styles.captureButton}
@@ -170,6 +181,33 @@ const UploadCard = () => {
                     </Text>
                 </LinearGradient>
             </TouchableOpacity>
+
+            {/* Options Modal */}
+            <Modal
+                animationType="fade"
+                transparent={true}
+                visible={showOptionsModal}
+                onRequestClose={() => setShowOptionsModal(false)}
+            >
+                <TouchableOpacity 
+                    style={styles.modalOverlay} 
+                    activeOpacity={1} 
+                    onPress={() => setShowOptionsModal(false)}
+                >
+                    <View style={styles.optionsContent}>
+                        <Text style={[styles.modalTitle, { marginBottom: 15 }]}>Upload Photo</Text>
+                        <TouchableOpacity style={styles.optionButton} onPress={() => { setShowOptionsModal(false); takePhoto(); }}>
+                            <Ionicons name="camera" size={24} color="#2D7D46" />
+                            <Text style={styles.optionText}>Take Photo</Text>
+                        </TouchableOpacity>
+                        <View style={{ height: 1, backgroundColor: '#E5E7EB', width: '100%', marginVertical: 5 }} />
+                        <TouchableOpacity style={styles.optionButton} onPress={() => { setShowOptionsModal(false); pickImage(); }}>
+                            <Ionicons name="images" size={24} color="#2D7D46" />
+                            <Text style={styles.optionText}>Choose from Gallery</Text>
+                        </TouchableOpacity>
+                    </View>
+                </TouchableOpacity>
+            </Modal>
 
             {/* Results Modal */}
             <Modal
@@ -317,6 +355,31 @@ const UploadCard = () => {
 };
 
 const styles = StyleSheet.create({
+    optionsContent: {
+        width: '80%',
+        backgroundColor: '#fff',
+        borderRadius: 20,
+        padding: 20,
+        alignItems: 'center',
+        elevation: 10,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 5 },
+        shadowOpacity: 0.2,
+        shadowRadius: 10,
+    },
+    optionButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        width: '100%',
+        paddingVertical: 15,
+        paddingHorizontal: 10,
+    },
+    optionText: {
+        fontSize: 18,
+        fontWeight: '600',
+        color: '#374151',
+        marginLeft: 15,
+    },
     glassCard: {
         backgroundColor: 'rgba(255, 255, 255, 0.75)', // Slightly more solid for the cream background
         borderRadius: 38,

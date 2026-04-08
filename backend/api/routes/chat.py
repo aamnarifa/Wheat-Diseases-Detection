@@ -12,7 +12,7 @@ class ChatRequest(BaseModel):
     language: Optional[str] = "English"
     context: Optional[dict] = None
 
-@router.post("")
+@router.post("/chat")
 async def chat_with_assistant(request: ChatRequest):
     try:
         ctx = request.context or latest_prediction

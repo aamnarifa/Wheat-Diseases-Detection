@@ -114,7 +114,7 @@ export const getProfile = async () => {
     return data;
 }
 
-export const predictWheatDisease = async (uri: string): Promise<PredictionResult> => {
+export const predictWheatDisease = async (uri: string, latitude?: number, longitude?: number): Promise<PredictionResult> => {
     console.log(`[API] Predicting disease for: ${uri}`);
     const formData = new FormData();
 
@@ -134,6 +134,9 @@ export const predictWheatDisease = async (uri: string): Promise<PredictionResult
         } as any);
     }
 
+    if (latitude !== undefined) formData.append("latitude", latitude.toString());
+    if (longitude !== undefined) formData.append("longitude", longitude.toString());
+
     try {
         const response = await fetchWithAuth(`${BASE_URL}/predict`, {
             method: "POST",
@@ -151,6 +154,17 @@ export const predictWheatDisease = async (uri: string): Promise<PredictionResult
             status: "error",
             message: `Connection failed: ${error.message}.`,
         };
+    }
+};
+
+export const getScans = async () => {
+    try {
+        const res = await fetchWithAuth(`${BASE_URL}/scans`);
+        if (!res.ok) throw new Error("Failed to fetch scans");
+        return await res.json();
+    } catch (error) {
+        console.error(error);
+        return [];
     }
 };
 

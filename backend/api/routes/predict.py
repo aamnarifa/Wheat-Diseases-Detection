@@ -1,19 +1,22 @@
-from fastapi import APIRouter, File, UploadFile
+from fastapi import APIRouter, File, UploadFile, Form
 import numpy as np
 from io import BytesIO
 from PIL import Image
 import tensorflow as tf
 import os
+import json
+import uuid
 from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
 
 from ..shared import latest_prediction
-from .insurance import get_insurance_recommendation, SEVERITY_MAP
+from ..services.insurance_service import get_insurance_recommendation, SEVERITY_MAP
 
 router = APIRouter()
 
-CURRENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-BACKEND_DIR = os.path.dirname(CURRENT_DIR)
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+BACKEND_DIR = os.path.dirname(os.path.dirname(CURRENT_DIR))
 MODEL_PATH = os.path.join(BACKEND_DIR, "saved_models", "wheat_disease_model.keras")
+SCANS_DB_PATH = os.path.join(CURRENT_DIR, "..", "data", "scans_db.json")
 
 MODEL = tf.keras.models.load_model(MODEL_PATH)
 
@@ -25,6 +28,21 @@ CLASS_NAMES = [
     "WheatBlast"
 ]
 
+def load_scans():
+    if not os.path.exists(SCANS_DB_PATH):
+        return []
+    with open(SCANS_DB_PATH, "r") as f:
+        try:
+            return json.load(f)
+        except:
+            return []
+
+def save_scan(scan_data):
+    scans = load_scans()
+    scans.append(scan_data)
+    with open(SCANS_DB_PATH, "w") as f:
+        json.dump(scans, f, indent=4)
+
 def read_file_as_image(data):
     image = Image.open(BytesIO(data)).convert("RGB")
     image = image.resize((224, 224))
@@ -32,8 +50,16 @@ def read_file_as_image(data):
     image = preprocess_input(image)
     return image
 
-@router.post("")
-async def predict(file: UploadFile = File(...)):
+@router.get("/scans")
+async def get_scans():
+    return load_scans()
+
+@router.post("/predict")
+async def predict(
+    file: UploadFile = File(...), 
+    latitude: float = Form(None), 
+    longitude: float = Form(None)
+):
     try:
         image = read_file_as_image(await file.read())
         img_batch = np.expand_dims(image, 0)
@@ -51,6 +77,19 @@ async def predict(file: UploadFile = File(...)):
             }
 
         insurance_data = get_insurance_recommendation(predicted_class)
+
+        # Log to pseudo DB if coords present
+        if latitude is not None and longitude is not None:
+            scan_id = str(uuid.uuid4())
+            scan_record = {
+                "id": scan_id,
+                "latitude": latitude,
+                "longitude": longitude,
+                "disease": predicted_class,
+                "confidence": round(confidence, 2),
+                "severity": SEVERITY_MAP.get(predicted_class, "Unknown")
+            }
+            save_scan(scan_record)
 
         latest_prediction["disease"] = predicted_class
         latest_prediction["confidence"] = round(confidence, 1)

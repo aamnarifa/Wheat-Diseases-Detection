@@ -6,7 +6,7 @@ from ..shared import latest_prediction
 router = APIRouter()
 WEATHER_API_KEY = os.getenv("WEATHER_API_KEY")
 
-@router.post("-analysis")
+@router.post("/weather-analysis")
 async def weather_analysis(data: dict):
     try:
         lat = data.get("latitude")
