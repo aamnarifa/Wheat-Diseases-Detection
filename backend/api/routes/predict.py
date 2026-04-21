@@ -2,11 +2,9 @@ from fastapi import APIRouter, File, UploadFile, Form
 import numpy as np
 from io import BytesIO
 from PIL import Image
-import tensorflow as tf
 import os
 import json
 import uuid
-from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
 
 from ..shared import latest_prediction
 from ..services.insurance_service import get_insurance_recommendation, SEVERITY_MAP
@@ -18,7 +16,15 @@ BACKEND_DIR = os.path.dirname(os.path.dirname(CURRENT_DIR))
 MODEL_PATH = os.path.join(BACKEND_DIR, "saved_models", "wheat_disease_model.keras")
 SCANS_DB_PATH = os.path.join(CURRENT_DIR, "..", "data", "scans_db.json")
 
-MODEL = tf.keras.models.load_model(MODEL_PATH)
+# Lazy Loading Model to save memory on Render deployments
+MODEL = None
+
+def get_model():
+    global MODEL
+    if MODEL is None:
+        import tensorflow as tf
+        MODEL = tf.keras.models.load_model(MODEL_PATH)
+    return MODEL
 
 CLASS_NAMES = [
     "BlackPoint",
@@ -47,6 +53,9 @@ def read_file_as_image(data):
     image = Image.open(BytesIO(data)).convert("RGB")
     image = image.resize((224, 224))
     image = np.array(image).astype(np.float32)
+    
+    # Lazy import preprocess_input to save RAM
+    from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
     image = preprocess_input(image)
     return image
 
@@ -61,10 +70,11 @@ async def predict(
     longitude: float = Form(None)
 ):
     try:
+        model = get_model()
         image = read_file_as_image(await file.read())
         img_batch = np.expand_dims(image, 0)
 
-        predictions = MODEL.predict(img_batch, verbose=0)[0]
+        predictions = model.predict(img_batch, verbose=0)[0]
         predicted_class = CLASS_NAMES[np.argmax(predictions)]
         confidence = float(np.max(predictions)) * 100
 

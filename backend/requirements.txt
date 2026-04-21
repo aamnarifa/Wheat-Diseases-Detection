@@ -1,0 +1,19 @@
+# Core API
+fastapi
+uvicorn
+gunicorn
+python-dotenv
+python-multipart
+
+# Authentication & Database
+pymongo[srv]
+bcrypt
+python-jose[cryptography]
+
+# AI & Machine Learning
+tensorflow-cpu
+pillow
+google-generativeai
+
+# Utilities
+requests
