@@ -3,13 +3,13 @@ import {
   View,
   Text,
   Image,
-  SafeAreaView,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
   TextInput,
   Dimensions
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
@@ -48,7 +48,7 @@ export default function Home() {
       console.log("[Weather] Fetching current position...");
       // Add a timeout to location request
       const location = await Promise.race([
-        Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
+        Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Highest }),
         new Promise((_, reject) => setTimeout(() => reject(new Error('Location timeout')), 10000))
       ]) as any;
 

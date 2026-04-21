@@ -1,25 +1,33 @@
 import bcrypt
 from jose import jwt
-import json
 import os
+from pymongo import MongoClient
 
-SECRET_KEY = "secret123"
+MONGO_URL = os.getenv("MONGO_URL", "")
+
+# Initialize MongoDB client
+try:
+    if MONGO_URL:
+        client = MongoClient(MONGO_URL)
+        db = client.get_default_database(default="wheatify")
+        users_collection = db["users"]
+    else:
+        users_collection = None
+except Exception as e:
+    print(f"Failed to connect to MongoDB: {e}")
+    users_collection = None
+
+SECRET_KEY = os.getenv("SECRET_KEY", "secret123")
 ALGORITHM = "HS256"
-DB_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "users_db.json")
 
-def load_users():
-    if os.path.exists(DB_FILE):
-        try:
-            with open(DB_FILE, "r") as f:
-                return json.load(f)
-        except json.JSONDecodeError:
-            return {}
-    return {}
+def get_user(username: str):
+    if users_collection is not None:
+        return users_collection.find_one({"username": username})
+    return None
 
-def save_users(db):
-    os.makedirs(os.path.dirname(DB_FILE), exist_ok=True)
-    with open(DB_FILE, "w") as f:
-        json.dump(db, f, indent=4)
+def create_user(username: str, hashed_password: str):
+    if users_collection is not None:
+        users_collection.insert_one({"username": username, "password": hashed_password})
 
 def hash_password(password: str) -> str:
     salt = bcrypt.gensalt()

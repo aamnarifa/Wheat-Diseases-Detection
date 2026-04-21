@@ -31,17 +31,27 @@ export default function Index() {
         textOpacity.value = withDelay(600, withTiming(1, { duration: 800 }));
         textTranslateY.value = withDelay(600, withTiming(0, { duration: 800, easing: Easing.out(Easing.quad) }));
 
-        // Navigate based on auth after 3.5 seconds
-        const timer = setTimeout(async () => {
+        let timer: ReturnType<typeof setTimeout>;
+
+        // Navigate based on auth completely
+        const checkAuthAndNavigate = async () => {
             const token = await getToken();
             if (token) {
-                router.replace("/(tabs)");
+                // If logged in, let the splash animation finish before jumping to the app
+                timer = setTimeout(() => {
+                    router.replace("/(tabs)");
+                }, 3500);
             } else {
+                // If NOT logged in, skip the 3.5s wait and immediately go to login!
                 router.replace("/login");
             }
-        }, 3500);
+        };
 
-        return () => clearTimeout(timer);
+        checkAuthAndNavigate();
+
+        return () => {
+            if (timer) clearTimeout(timer);
+        };
     }, []);
 
     const logoStyle = useAnimatedStyle(() => ({
