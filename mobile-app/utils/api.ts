@@ -2,19 +2,7 @@ import { Platform } from "react-native";
 import Constants from 'expo-constants';
 import * as SecureStore from 'expo-secure-store';
 
-const getHostUri = (): string => {
-    try {
-        const hostUri = Constants.expoConfig?.hostUri;
-        if (hostUri) {
-            return `http://${hostUri.split(':')[0]}:8000`;
-        }
-    } catch(e) {}
-    // Fallbacks
-    if (Platform.OS === 'android') return "http://10.0.2.2:8000";
-    return "http://localhost:8000";
-}
-
-export const BASE_URL = getHostUri();
+export const BASE_URL = "https://wheat-diseases-detection-8.onrender.com";
 
 console.log(`[API] Configuring BASE_URL: ${BASE_URL} (Platform: ${Platform.OS})`);
 
